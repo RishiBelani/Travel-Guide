@@ -17,14 +17,14 @@ response = requests.request("POST", url, headers=headers, data=payload)
 auth_token=response.json()
 
 
-openai.api_key = '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'
+openai.api_key = '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'
 
 messages=[
       {"role": "system", "content": "You are a helpful Travel Guide."}
 ]
 
-
-@app.get("/flights")
+data=[]
+@app.post("/flights")
 async def search_flights(returnDate=None,originLocationCode="DEL",destinationLocationCode="GOI",departureDate="2023-05-04",adults="1"):
     if returnDate!=None:
         url = "https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode="+originLocationCode+"&destinationLocationCode="+destinationLocationCode+"&departureDate="+departureDate+"&returnDate="+returnDate+"&adults="+adults+"&max=5&currencyCode=INR"
@@ -38,9 +38,10 @@ async def search_flights(returnDate=None,originLocationCode="DEL",destinationLoc
 
     response = requests.request("GET",url, headers=headers, data=payload)
 
+    data.append(response.text)
     return response.text
 
-@app.get("/nearbyCities")
+@app.post("/nearbyCities")
 async def nearby_cities(cityCodes):
     url = "https://test.api.amadeus.com/v1/reference-data/recommended-locations?cityCodes="+cityCodes
     payload = {}
@@ -52,12 +53,12 @@ async def nearby_cities(cityCodes):
 
     return response.text
 
-@app.get("/chatgpt")
-def update_chat(content,role="user"):
+@app.post("/chatgpt")
+async def update_chat(content,role="user"):
   messages.append({"role": role, "content": content})
   return summary(messages)
 
-def summary(messages):
+async def summary(messages):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=messages
@@ -69,3 +70,7 @@ def summary(messages):
 
     else :
         return 'Failed to Generate response!'
+    
+@app.get("/data")
+async def get_data():
+    return data
