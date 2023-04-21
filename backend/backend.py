@@ -3,8 +3,37 @@ import requests
 import json
 import openai
 import os
+import amadeus
+
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware import Middleware
 
 app = FastAPI()
+
+origins = [
+    "http://localhost.tiangolo.com",
+    "https://localhost.tiangolo.com",
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+middleware = [
+    Middleware(
+        CORSMiddleware,
+        allow_origins=['*'],
+        allow_credentials=True,
+        allow_methods=['*'],
+        allow_headers=['*']
+    )
+]
 
 url = "https://test.api.amadeus.com/v1/security/oauth2/token"
 
@@ -17,7 +46,7 @@ response = requests.request("POST", url, headers=headers, data=payload)
 auth_token=response.json()
 
 
-openai.api_key = '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'
+openai.api_key = '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'
 
 messages=[
       {"role": "system", "content": "You are a helpful Travel Guide."}
@@ -39,7 +68,7 @@ async def search_flights(returnDate=None,originLocationCode="DEL",destinationLoc
     response = requests.request("GET",url, headers=headers, data=payload)
 
     data.append(response.text)
-    return response.text
+    return response.json()
 
 @app.post("/nearbyCities")
 async def nearby_cities(cityCodes):
@@ -51,14 +80,14 @@ async def nearby_cities(cityCodes):
 
     response = requests.request("GET", url, headers=headers, data=payload)
 
-    return response.text
+    return response.json()
 
 @app.post("/chatgpt")
-async def update_chat(content,role="user"):
+def update_chat(content,role="user"):
   messages.append({"role": role, "content": content})
   return summary(messages)
 
-async def summary(messages):
+def summary(messages):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=messages
@@ -66,7 +95,6 @@ async def summary(messages):
 
     if response.choices[0].message!=None:
         return response.choices[0].message["content"]
-        #print(response.choices[0].message["content"])
 
     else :
         return 'Failed to Generate response!'
@@ -74,3 +102,16 @@ async def summary(messages):
 @app.get("/data")
 async def get_data():
     return data
+
+@app.post("/iatacode")
+async def iata_code(keyword="paris"):
+    url = "https://test.api.amadeus.com/v1/reference-data/locations/cities?keyword="+keyword
+
+    payload = {}
+    headers = {
+    'Authorization': 'Bearer '+auth_token["access_token"]
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+
+    return response.json()["data"][0]["iataCode"]
